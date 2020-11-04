@@ -18,27 +18,25 @@ exitWithError() {
     exit 1
 }
 
-SAS_URL="https://unifiededgescenarios.blob.core.windows.net/arm-template/20201005.6/manifest-bundle.zip"
+# REPO
+MANIFAST_REPO="https://github.com/goatwu1993/arm-template-json.git"
+MANIFAST_BRANCH="master"
+MANIFAST_PATH="arm-template-json.git/manifast"
 
 echo "Logging in with Managed Identity"
 az login --identity --output "none"
 
-
+# =========================================================
 # Download the latest manifest-bundle.zip from storage account
-wget -O manifest-bundle.zip "$SAS_URL"
+# =========================================================
+apt-get update
+apt-get install -y git
+git clone "${MANIFAST_REPO}" --single-branch --branch "${MANIFAST_BRANCH}"
 
-echo "Downloading is done for latest files"
-
-# Extracts all the files from zip in curent directory;
-# overwrite existing ones
-echo "Unzipping the files"
-unzip -o manifest-bundle.zip -d "manifest-bundle"
-cd manifest-bundle
-echo "Unzipped the files in directory manifest-bundle"
-
+# =========================================================
+# Install packages
+# =========================================================
 echo "Installing packages"
-
-
 echo "Installing iotedgedev"
 pip install iotedgedev==2.1.4
 
