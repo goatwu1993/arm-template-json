@@ -48,7 +48,7 @@
     },
     "nameTraining": {
       "type": "string",
-      "defaultValue": "favCustomVisionService"
+      "defaultValue": "myCustomVisionService"
     },
     "skuTraining": {
       "type": "string",
@@ -57,6 +57,10 @@
       "metadata": {
         "description": "Describes the pricing tier for Training"
       }
+    },
+    "mediaServiceName": {
+      "type": "string",
+      "defaultValue": "myMediaService"
     }
   },
   "variables": {
@@ -519,6 +523,9 @@
           "StorageAccountName": {
             "value": "[variables('storageAccountName')]"
           },
+          "mediaServiceName": {
+            "value": "[parameters('mediaServiceName')]" // TODO: Fill in parameter value
+          },
           "iotHubName": {
             "value": "[variables('iotHubName')]"
           },
@@ -578,6 +585,9 @@
               "type": "String"
             },
             "StorageAccountName": {
+              "type": "String"
+            },
+            "mediaServiceName": {
               "type": "String"
             },
             "iotHubName": {
@@ -654,6 +664,21 @@
                   "ipRules": []
                 },
                 "isHnsEnabled": "[parameters('isHnsEnabled')]"
+              }
+            },
+            {
+              "type": "Microsoft.Media/mediaservices",
+              "apiVersion": "2015-10-01",
+              "name": "[parameters('mediaServiceName')]",
+              "location": "West US 2",
+              "dependsOn": ["[parameters('storageAccountName')]"],
+              "properties": {
+                "storageAccounts": [
+                  {
+                    "id": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+                    "isPrimary": true
+                  }
+                ]
               }
             },
             {
