@@ -76,13 +76,6 @@
       "apiVersion": "2020-06-01",
       "name": "[variables('resourceGroupName')]",
       "location": "[variables('location')]",
-      "properties": {}
-    },
-    {
-      "type": "Microsoft.Resources/resourceGroups",
-      "apiVersion": "2020-06-01",
-      "name": "[variables('resourceGroupName')]",
-      "location": "[variables('location')]",
       "properties": {},
       "condition": "[not(equals(parameters('resourceGroupName'),variables('rgDevice')))]"
     },
