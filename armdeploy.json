@@ -46,6 +46,13 @@
         "description": "Enter the name of existing IoT Edge device. This is required only if 'Use Existing Edge Device' is set to 'Yes'"
       }
     },
+    "vmName": {
+      "defaultValue": "",
+      "type": "string",
+      "metadata": {
+        "description": "Enter the name of existing IoT Edge device. This is required only if 'Use Existing Edge Device' is set to 'No'"
+      }
+    },
     "nameTraining": {
       "type": "string",
       "defaultValue": "myCustomVisionService"
@@ -65,15 +72,15 @@
   },
   "variables": {
     "location": "[deployment().location]",
-    "diskName": "mariner",
+    "vmName": "[parameters('vmName')]",
+    "diskName": "[concat(variables('vmName'), '-Disk')]",
     "deviceName": "[if(equals(parameters('existingDeviceName'), ''), 'azureEyeEdgeDevice', parameters('existingDeviceName'))]",
-    "networkSecurityGroupName": "default-NSG",
-    "vmName": "marinervm",
-    "nicName": "marinervmVMNic",
-    "virtualNetworkName": "MyVNET",
-    "subnetName": "Subnet",
+    "networkSecurityGroupName": "[concat(variables('vmName'), '-NSG')]",
+    "nicName": "[concat(variables('vmName'), '-NIC')]",
+    "virtualNetworkName": "[concat(variables('vmName'), '-VNet')]",
+    "subnetName": "[concat(variables('vmName'), '-Subnet')]",
     "addressPrefix": "10.0.0.0/16",
-    "publicIPAddressName": "myPublicIP",
+    "publicIPAddressName": "[concat(variables('vmName'), '-PublicIP')]",
     "resourceGroupName": "[parameters('resourceGroupName')]",
     "storageAccountName": "[concat('uesstorage',substring(uniqueString(subscription().id,parameters('resourceGroupName')),1,4))]",
     "iothublogic": "[if(equals(parameters('existingIotHubName'), ''), 'azureeyeiothub', parameters('existingIotHubName'))]",
@@ -524,7 +531,7 @@
             "value": "[variables('storageAccountName')]"
           },
           "mediaServiceName": {
-            "value": "[parameters('mediaServiceName')]" // TODO: Fill in parameter value
+            "value": "[parameters('mediaServiceName')]"
           },
           "iotHubName": {
             "value": "[variables('iotHubName')]"
