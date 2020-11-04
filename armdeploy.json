@@ -45,6 +45,18 @@
       "metadata": {
         "description": "Enter the name of existing IoT Edge device. This is required only if 'Use Existing Edge Device' is set to 'Yes'"
       }
+    },
+    "nameTraining": {
+      "type": "string",
+      "defaultValue": "favCustomVisionService"
+    },
+    "skuTraining": {
+      "type": "string",
+      "defaultValue": "F0",
+      "allowedValues": ["F0", "S0"],
+      "metadata": {
+        "description": "Describes the pricing tier for Training"
+      }
     }
   },
   "variables": {
@@ -68,7 +80,8 @@
     "deploymentName": "[concat('eye-deployment',substring(uniqueString(subscription().id,parameters('resourceGroupName')),1,4))]",
     "managedIdentityName": "[concat('Managed_Identity',substring(uniqueString(subscription().id,parameters('resourceGroupName')),1,4))]",
     "managedIdentityResourceGroup": "[parameters('resourceGroupName')]",
-    "customVideoSource": ""
+    "customVideoSource": "",
+    "namePrediction": "[concat(take(replace(parameters('nameTraining'),'-',''), 18), '_Prediction')]"
   },
   "resources": [
     {
@@ -549,6 +562,12 @@
           },
           "deploymentName": {
             "value": "[variables('deploymentName')]"
+          },
+          "nameTraining": {
+            "value": "[parameters('nameTraining')]"
+          },
+          "skuTraining": {
+            "value": "[parameters('skuTraining')]"
           }
         },
         "template": {
@@ -603,6 +622,12 @@
             "utcValue": {
               "type": "string",
               "defaultValue": "[utcNow()]"
+            },
+            "nameTraining": {
+              "type": "string"
+            },
+            "skuTraining": {
+              "type": "string"
             }
           },
           "variables": {},
@@ -747,6 +772,17 @@
               }
             },
             {
+              "type": "Microsoft.CognitiveServices/accounts",
+              "apiVersion": "2016-02-01-preview",
+              "name": "[parameters('nameTraining')]",
+              "location": "[parameters('resourceGroupLocation')]",
+              "kind": "CustomVision.Training",
+              "sku": {
+                "name": "[parameters('skuTraining')]"
+              },
+              "properties": {}
+            },
+            {
               "type": "Microsoft.Resources/deploymentScripts",
               "apiVersion": "2019-10-01-preview",
               "name": "ModuleDeployment",
@@ -810,6 +846,14 @@
             }
           ],
           "outputs": {
+            "Training API Key": {
+              "type": "string",
+              "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('nameTraining')), providers('Microsoft.CognitiveServices', 'accounts').apiVersions[0]).key1]"
+            },
+            "Training Endpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('nameTraining')), providers('Microsoft.CognitiveServices', 'accounts').apiVersions[0]).endpoint]"
+            },
             "sasToken": {
               "type": "string",
               "value": "[listAccountSas(parameters('StorageAccountName'), '2018-07-01', parameters('accountSasProperties')).accountSasToken]"
