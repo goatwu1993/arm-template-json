@@ -598,9 +598,6 @@
           "managedIdentityName": {
             "value": "[variables('managedIdentityName')]"
           },
-          "customVideoSource": {
-            "value": "[variables('customVideoSource')]"
-          },
           "deviceName": {
             "value": "[variables('deviceName')]"
           },
@@ -650,6 +647,9 @@
             },
             "isHnsEnabled": {
               "type": "Bool"
+            },
+            "accountSasProperties": {
+              "type": "Object"
             },
             "deviceArchitecture": {
               "type": "String"
