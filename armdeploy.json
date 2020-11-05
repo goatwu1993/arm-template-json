@@ -24,6 +24,14 @@
         "description": "Select value for runtime for Detector module on Edge Device. Set it to 'CPU' to use CPU to run detector module. If the Edge Device has Nvidia GPU, set it to 'NVIDIA' to use GPU to run detector module or to use movidius set it to 'MOVIDIUS'."
       }
     },
+    "videoCaptureModule": {
+      "defaultValue": "lva",
+      "allowedValues": ["lva", "opencv"],
+      "type": "string",
+      "metadata": {
+        "description": "Select video capture module."
+      }
+    },
     "useExistingEdgeDevice": {
       "defaultValue": "No",
       "allowedValues": ["Yes", "No"],
@@ -68,6 +76,20 @@
     "mediaServiceName": {
       "type": "string",
       "defaultValue": "myMediaService"
+    },
+    "mediaServiceServicePrincipalName": {
+      "type": "string",
+      "defaultValue": "myServicePrincipal",
+      "metadata": {
+        "description": "Azure Media Service Principal name"
+      }
+    },
+    "mediaServiceServicePrincipalSecret": {
+      "type": "string",
+      "defaultValue": "myServicePrincipalSecret",
+      "metadata": {
+        "defaultValue": "Azure Media Service Principal secret"
+      }
     }
   },
   "variables": {
@@ -91,8 +113,7 @@
     "deploymentName": "[concat('eye-deployment',substring(uniqueString(subscription().id,parameters('resourceGroupName')),1,4))]",
     "managedIdentityName": "[concat('Managed_Identity',substring(uniqueString(subscription().id,parameters('resourceGroupName')),1,4))]",
     "managedIdentityResourceGroup": "[parameters('resourceGroupName')]",
-    "customVideoSource": "",
-    "namePrediction": "[concat(take(replace(parameters('nameTraining'),'-',''), 18), '_Prediction')]"
+    "customVideoSource": ""
   },
   "resources": [
     {
@@ -530,8 +551,17 @@
           "StorageAccountName": {
             "value": "[variables('storageAccountName')]"
           },
+          "videoCaptureModule": {
+            "value": "[parameters('videoCaptureModule')]"
+          },
           "mediaServiceName": {
             "value": "[parameters('mediaServiceName')]"
+          },
+          "mediaServiceServicePrincipalName": {
+            "value": "[parameters('mediaServiceServicePrincipalName')]"
+          },
+          "mediaServiceServicePrincipalSecret": {
+            "value": "[parameters('mediaServiceServicePrincipalSecret')]"
           },
           "iotHubName": {
             "value": "[variables('iotHubName')]"
@@ -597,6 +627,15 @@
             "mediaServiceName": {
               "type": "String"
             },
+            "mediaServiceServicePrincipalName": {
+              "type": "String"
+            },
+            "mediaServiceServicePrincipalSecret": {
+              "type": "String"
+            },
+            "videoCaptureModule": {
+              "type": "String"
+            },
             "iotHubName": {
               "type": "string"
             },
@@ -612,9 +651,6 @@
             "isHnsEnabled": {
               "type": "Bool"
             },
-            "accountSasProperties": {
-              "type": "Object"
-            },
             "deviceArchitecture": {
               "type": "String"
             },
@@ -625,9 +661,6 @@
               "type": "String"
             },
             "managedIdentityName": {
-              "type": "String"
-            },
-            "customVideoSource": {
               "type": "String"
             },
             "deviceName": {
@@ -834,7 +867,7 @@
                 "supportingScriptUris": [],
                 "environmentVariables": [
                   {
-                    "name": "DETECTOR_MODULE_RUNTIME",
+                    "name": "INFERENCE_MODULE_RUNTIME",
                     "value": "[parameters('moduleRuntime')]"
                   },
                   {
@@ -864,6 +897,26 @@
                   {
                     "name": "IDENTITY_NAME",
                     "value": "[parameters('managedIdentityName')]"
+                  },
+                  {
+                    "name": "CUSTOMVISION_NAME",
+                    "value": "[parameters('nameTraining')]"
+                  },
+                  {
+                    "name": "AMS_NAME",
+                    "value": "[parameters('mediaServiceName')]"
+                  },
+                  {
+                    "name": "AMS_SP_NAME",
+                    "value": "[parameters('mediaServiceServicePrincipalName')]"
+                  },
+                  {
+                    "name": "AMS_SP_SECRET",
+                    "value": "[parameters('mediaServiceServicePrincipalSecret')]"
+                  },
+                  {
+                    "name": "VIDEO_CAPTURE_MODULE",
+                    "value": "[parameters('videoCaptureModule')]"
                   }
                 ],
                 "retentionInterval": "P1D",
