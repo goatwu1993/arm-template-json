@@ -2,7 +2,19 @@
 
 # This script generates a deployment manifest template and deploys it to an existing IoT Edge device
 
+# =========================================================
+# Variables
+# =========================================================
+MANIFAST_REPO="https://github.com/goatwu1993/arm-template-json.git"
+MANIFAST_BRANCH="master"
+MANIFAST_PATH="arm-template-json.git/manifast"
+
+IOTEDGE_DEV_VERSION="2.1.0"
+
+
+# =========================================================
 # Define helper function for logging
+# =========================================================
 info() {
     echo "$(date +"%Y-%m-%d %T") [INFO]"
 }
@@ -18,19 +30,16 @@ exitWithError() {
     exit 1
 }
 
-# REPO
-MANIFAST_REPO="https://github.com/goatwu1993/arm-template-json.git"
-MANIFAST_BRANCH="master"
-MANIFAST_PATH="arm-template-json.git/manifast"
-
+# =========================================================
+# Login Azure
+# =========================================================
 echo "Logging in with Managed Identity"
 az login --identity --output "none"
-
 # =========================================================
 # Download the latest manifest-bundle.zip from storage account
 # =========================================================
 apt-get update
-apt-get install -y git
+apt-get install -y git jq
 git clone "${MANIFAST_REPO}" --single-branch --branch "${MANIFAST_BRANCH}"
 
 # =========================================================
@@ -38,7 +47,7 @@ git clone "${MANIFAST_REPO}" --single-branch --branch "${MANIFAST_BRANCH}"
 # =========================================================
 echo "Installing packages"
 echo "Installing iotedgedev"
-pip install iotedgedev==2.1.4
+pip install iotedgedev=="${IOTEDGE_DEV_VERSION}"
 
 echo "Updating az-cli"
 pip install --upgrade azure-cli
@@ -51,83 +60,78 @@ pip3 install --upgrade jsonschema
 apk add coreutils
 echo "Installation complete"
 
+# =========================================================
+# IoT Hub Create IoTHub/Edge device if not exists
+# =========================================================
 # We're enabling exit on error after installation steps as there are some warnings and error thrown in installation steps which causes the script to fail
 set -e
 
 
 # Check for existence of IoT Hub and Edge device in Resource Group for IoT Hub,
 # and based on that either throw error or use the existing resources
-if [ -z "$(az iot hub list --query "[?name=='$IOTHUB_NAME'].name" --resource-group "$RESOURCE_GROUP_IOT" -o tsv)" ]; then
+if [ -z "$(az iot hub list --query "[?name=='$IOTHUB_NAME'].name" --resource-group "$RESOURCE_GROUP" -o tsv)" ]; then
     echo "$(error) IoT Hub \"$IOTHUB_NAME\" does not exist."
     exit 1
 else
     echo "$(info) Using existing IoT Hub \"$IOTHUB_NAME\""
 fi
 
-if [ -z "$(az iot hub device-identity list --hub-name "$IOTHUB_NAME" --resource-group "$RESOURCE_GROUP_IOT" --query "[?deviceId=='$DEVICE_NAME'].deviceId" -o tsv)" ]; then
+if [ -z "$(az iot hub device-identity list --hub-name "$IOTHUB_NAME" --resource-group "$RESOURCE_GROUP" --query "[?deviceId=='$DEVICE_NAME'].deviceId" -o tsv)" ]; then
     echo "$(error) Device \"$DEVICE_NAME\" does not exist in IoT Hub \"$IOTHUB_NAME\""
     exit 1
 else
     echo "$(info) Using existing Edge Device \"$IOTHUB_NAME\""
 fi
 
+# =========================================================
+# ENV template replacement
+# =========================================================
+ENV_TEMPLATE_PATH="env-template"
+ENV_PATH=".env"
 
+cp ${ENV_TEMPLATE_PATH} ${ENV_PATH}
+IOTHUB_CONNECTION_STRING=$(az iot hub show-connection-string --name ${IOTHUB_NAME} | jq ".connectionString")
+CUSTOM_VISION_TRAINING_KEY=$(az cognitiveservices account keys list --name ${CUSTOMVISION_NAME} -g ${RESOURCE_GROUP} | jq ".key1")
+CUSTOM_VISION_ENDPOINT=$(az cognitiveservices account show --name ${CUSTOMVISION_NAME} -g ${RESOURCE_GROUP} | jq ".properties.endpoint")
+SUBSCRIPTION_ID=$(az account show | jq ".id")
+TENANT_ID=$(az account show | jq ".managedByTenants[0].tenantId")
+SERVICE_NAME=$()
+
+# =========================================================
+# Choosing IoTHub Deployment template
+# =========================================================
 printf "\n%60s\n" " " | tr ' ' '-'
 echo "Configuring IoT Hub"
 printf "%60s\n" " " | tr ' ' '-'
 
-# Retrieve connection string for storage account
-STORAGE_CONNECTION_STRING=$(az storage account show-connection-string -g "$RESOURCE_GROUP_IOT" -n "$STORAGE_ACCOUNT_NAME" --query connectionString -o tsv)
 
-SAS_EXPIRY_DATE=$(date -u -d "1 year" '+%Y-%m-%dT%H:%MZ')
-STORAGE_BLOB_SHARED_ACCESS_SIGNATURE=$(az storage account generate-sas --account-name "$STORAGE_ACCOUNT_NAME" --expiry "$SAS_EXPIRY_DATE" --permissions "rwacl" --resource-types "sco" --services "b" --connection-string "$STORAGE_CONNECTION_STRING" --output tsv)
-STORAGE_CONNECTION_STRING_WITH_SAS="BlobEndpoint=https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/;SharedAccessSignature=${STORAGE_BLOB_SHARED_ACCESS_SIGNATURE}"
-
-
-
-MANIFEST_TEMPLATE_NAME="deployment.camera.template.json"
+MANIFEST_TEMPLATE_BASE_NAME="deployment"
 MANIFEST_ENVIRONMENT_VARIABLES_FILENAME=".env"
 
 if [ "$DETECTOR_MODULE_RUNTIME" == "CPU" ]; then
-    MODULE_RUNTIME="runc"
+    MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_BASE_NAME}.cpu"
 elif [ "$DETECTOR_MODULE_RUNTIME" == "NVIDIA" ]; then
-    MODULE_RUNTIME="nvidia"
+    MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_BASE_NAME}.gpu"
 elif [ "$DETECTOR_MODULE_RUNTIME" == "MOVIDIUS" ]; then
-    MODULE_RUNTIME="movidius"
+    MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_BASE_NAME}.vpu"
 fi
 
 # Update the value of RUNTIME variable in environment variable file
 sed -i 's#^\(RUNTIME[ ]*=\).*#\1\"'"$MODULE_RUNTIME"'\"#g' "$MANIFEST_ENVIRONMENT_VARIABLES_FILENAME"
 
-# Retrieve connection string for storage account
-STORAGE_CONNECTION_STRING=$(az storage account show-connection-string -g "$RESOURCE_GROUP_IOT" -n "$STORAGE_ACCOUNT_NAME" --query connectionString -o tsv)
-
-
-# Update the value of CAMERA_BLOB_SAS in the environment variable file with the SAS token for the images container
-sed -i "s|\(^CAMERA_BLOB_SAS=\).*|CAMERA_BLOB_SAS=\"${STORAGE_CONNECTION_STRING_WITH_SAS//\&/\\\&}\"|g" "$MANIFEST_ENVIRONMENT_VARIABLES_FILENAME"
-
-# This step updates the video stream if specified in the ARM template parameters. This
-# is intended to let the user provide their own video stream instead of using the sample video provided as part of this repo.
-if [ -z "$CUSTOM_VIDEO_SOURCE" ]; then
-    echo "$(info) Using default sample video to edge device"
-else
-    echo "$(info) Using custom video for edge deployment"
-
-    if [[ "$CUSTOM_VIDEO_SOURCE" == rtsp://* ]]; then
-        echo "$(info) RTSP URL: $CUSTOM_VIDEO_SOURCE"
-        sed -i 's#^\(CROSSING_VIDEO_URL[ ]*=\).*#\1\"'"$CUSTOM_VIDEO_SOURCE"'\"#g' "$MANIFEST_ENVIRONMENT_VARIABLES_FILENAME"
-    else
-        echo "$(error) Custom video source was not of format \"rtsp://path/to/video\". Please provide a valid RTSP URL"
-        exitWithError
-    fi
+if [ "$EDGE_DEVICE_ARCHITECTURE" == "ARM64" ]; then
+    MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_BASE_NAME}.arm64v8"
 fi
 
-if [ "$EDGE_DEVICE_ARCHITECTURE" == "X86" ]; then
-    PLATFORM_ARCHITECTURE="amd64"
-elif [ "$EDGE_DEVICE_ARCHITECTURE" == "ARM64" ]; then
-    PLATFORM_ARCHITECTURE="arm64v8"
+if [ "$VIDEO_CAPTURE_MODULE" == "opencv" ]; then
+    MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_BASE_NAME}.opencv"
 fi
 
+MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_BASE_NAME}.json"
+
+# =========================================================
+# Generate Deployment Manifast
+# =========================================================
 echo "$(info) Generating manifest file from template file"
 # Generate manifest file
 iotedgedev genconfig --file "$MANIFEST_TEMPLATE_NAME" --platform "$PLATFORM_ARCHITECTURE"
@@ -167,6 +171,9 @@ fi
 # Check if a deployment with given name, already exists in IoT Hub. If it doesn't exist create a new one.
 # If it exists, append a random number to user given deployment name and create a deployment.
 
+# =========================================================
+# IoT Hub Deploy
+# =========================================================
 az iot edge deployment create --deployment-id "$DEPLOYMENT_NAME" --hub-name "$IOTHUB_NAME" --content "$PRE_GENERATED_MANIFEST_FILENAME" --target-condition "deviceId='$DEVICE_NAME'" --output "none"
 
 echo "$(info) Deployed manifest file to IoT Hub. Your modules are being deployed to your device now. This may take some time."
