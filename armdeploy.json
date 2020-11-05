@@ -830,7 +830,7 @@
               "properties": {
                 "forceUpdateTag": "1",
                 "azCliVersion": "2.9.1",
-                "primaryScriptUri": "https://unifiededgescenarios.blob.core.windows.net/arm-template/20201005.6/deploy-modules.sh",
+                "primaryScriptUri": "https://raw.githubusercontent.com/goatwu1993/arm-template-json/main/scripts/deploy-iot-edge.sh",
                 "supportingScriptUris": [],
                 "environmentVariables": [
                   {
@@ -850,12 +850,8 @@
                     "value": "[parameters('StorageAccountName')]"
                   },
                   {
-                    "name": "RESOURCE_GROUP_IOT",
+                    "name": "RESOURCE_GROUP",
                     "value": "[parameters('resourceGroupName')]"
-                  },
-                  {
-                    "name": "CUSTOM_VIDEO_SOURCE",
-                    "value": "[parameters('customVideoSource')]"
                   },
                   {
                     "name": "DEVICE_NAME",
@@ -876,25 +872,7 @@
                 "cleanupPreference": "OnSuccess"
               }
             }
-          ],
-          "outputs": {
-            "Training API Key": {
-              "type": "string",
-              "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('nameTraining')), providers('Microsoft.CognitiveServices', 'accounts').apiVersions[0]).key1]"
-            },
-            "Training Endpoint": {
-              "type": "string",
-              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('nameTraining')), providers('Microsoft.CognitiveServices', 'accounts').apiVersions[0]).endpoint]"
-            },
-            "sasToken": {
-              "type": "string",
-              "value": "[listAccountSas(parameters('StorageAccountName'), '2018-07-01', parameters('accountSasProperties')).accountSasToken]"
-            },
-            "IoTHubConnectionString": {
-              "type": "string",
-              "value": "[concat('HostName=', reference(resourceId('Microsoft.Devices/IoTHubs', parameters('iotHubName')), providers('Microsoft.Devices', 'IoTHubs').apiVersions[0]).hostName, ';SharedAccessKeyName=iothubowner;SharedAccessKey=', listKeys(resourceId('Microsoft.Devices/IotHubs', parameters('iotHubName')), providers('Microsoft.Devices', 'IoTHubs').apiVersions[0]).value[0].primaryKey)]"
-            }
-          }
+          ]
         }
       },
       "resourceGroup": "[parameters('resourceGroupName')]"
