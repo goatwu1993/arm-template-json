@@ -63,7 +63,7 @@
     },
     "nameTraining": {
       "type": "string",
-      "defaultValue": "myCustomVisionService"
+      "defaultValue": "mycustomvision"
     },
     "skuTraining": {
       "type": "string",
@@ -75,18 +75,18 @@
     },
     "mediaServiceName": {
       "type": "string",
-      "defaultValue": "myMediaService"
+      "defaultValue": "myams"
     },
     "mediaServiceServicePrincipalName": {
       "type": "string",
-      "defaultValue": "myServicePrincipal",
+      "defaultValue": "myamsspname",
       "metadata": {
         "description": "Azure Media Service Principal name"
       }
     },
     "mediaServiceServicePrincipalSecret": {
       "type": "string",
-      "defaultValue": "myServicePrincipalSecret",
+      "defaultValue": "myamsspsecret",
       "metadata": {
         "defaultValue": "Azure Media Service Principal secret"
       }
