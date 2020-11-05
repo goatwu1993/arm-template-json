@@ -55,7 +55,7 @@
       }
     },
     "vmName": {
-      "defaultValue": "",
+      "defaultValue": "myvm",
       "type": "string",
       "metadata": {
         "description": "Enter the name of existing IoT Edge device. This is required only if 'Use Existing Edge Device' is set to 'No'"
