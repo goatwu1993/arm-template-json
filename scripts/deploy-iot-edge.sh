@@ -5,9 +5,7 @@
 # =========================================================
 # Variables
 # =========================================================
-MANIFAST_REPO="https://github.com/goatwu1993/arm-template-json.git"
-MANIFAST_BRANCH="master"
-MANIFAST_PATH="arm-template-json.git/manifast"
+
 
 IOTEDGE_DEV_VERSION="2.1.0"
 
@@ -30,21 +28,13 @@ exitWithError() {
     exit 1
 }
 
-# =========================================================
-# Login Azure
-# =========================================================
-echo "Logging in with Managed Identity"
-az login --identity --output "none"
-# =========================================================
-# Download the latest manifest-bundle.zip from storage account
-# =========================================================
-apt-get update
-apt-get install -y git jq
-git clone "${MANIFAST_REPO}" --single-branch --branch "${MANIFAST_BRANCH}"
 
 # =========================================================
 # Install packages
 # =========================================================
+apt-get update && apt-get install -y git jq coreutils
+
+
 echo "Installing packages"
 echo "Installing iotedgedev"
 pip install iotedgedev=="${IOTEDGE_DEV_VERSION}"
@@ -53,11 +43,16 @@ echo "Updating az-cli"
 pip install --upgrade azure-cli
 pip install --upgrade azure-cli-telemetry
 
-echo "installing azure iot extension"
+# =========================================================
+# Login Azure
+# =========================================================
+echo "Logging in with Managed Identity"
+az login --identity --output "none"
+
+echo "Installing azure iot extension"
 az extension add --name azure-iot
 
 pip3 install --upgrade jsonschema
-apk add coreutils
 echo "Installation complete"
 
 # =========================================================
@@ -65,7 +60,6 @@ echo "Installation complete"
 # =========================================================
 # We're enabling exit on error after installation steps as there are some warnings and error thrown in installation steps which causes the script to fail
 set -e
-
 
 # Check for existence of IoT Hub and Edge device in Resource Group for IoT Hub,
 # and based on that either throw error or use the existing resources
@@ -86,16 +80,25 @@ fi
 # =========================================================
 # ENV template replacement
 # =========================================================
+MANIFAST_REPO="https://github.com/goatwu1993/arm-template-json.git"
+MANIFAST_BRANCH="master"
+MANIFAST_OUTPUT_DIR="manifast-iot-hub"
+MANIFAST_RELATIVE_PATH="/manifast"
 ENV_TEMPLATE_PATH="env-template"
 ENV_PATH=".env"
 
+git clone "${MANIFAST_REPO}" --single-branch --branch "${MANIFAST_BRANCH}" ${MANIFAST_PATH}
+cd "${MANIFAST_PATH}${MANIFAST_RELATIVE_PATH}"
 cp ${ENV_TEMPLATE_PATH} ${ENV_PATH}
+
 IOTHUB_CONNECTION_STRING=$(az iot hub show-connection-string --name ${IOTHUB_NAME} | jq ".connectionString")
 CUSTOM_VISION_TRAINING_KEY=$(az cognitiveservices account keys list --name ${CUSTOMVISION_NAME} -g ${RESOURCE_GROUP} | jq ".key1")
 CUSTOM_VISION_ENDPOINT=$(az cognitiveservices account show --name ${CUSTOMVISION_NAME} -g ${RESOURCE_GROUP} | jq ".properties.endpoint")
 SUBSCRIPTION_ID=$(az account show | jq ".id")
 TENANT_ID=$(az account show | jq ".managedByTenants[0].tenantId")
-SERVICE_NAME=$()
+AMS_NAME=${AMS_NAME}
+AMS_SP_ID="${AMS_SP_ID}"
+AMS_SP_SECRET="${AMS_SP_SECRET}"
 
 # =========================================================
 # Choosing IoTHub Deployment template
@@ -104,36 +107,40 @@ printf "\n%60s\n" " " | tr ' ' '-'
 echo "Configuring IoT Hub"
 printf "%60s\n" " " | tr ' ' '-'
 
+echo "DETECTOR_MODULE_RUNTIME: ${DETECTOR_MODULE_RUNTIME}"
+echo "EDGE_DEVICE_ARCHITECTURE: ${EDGE_DEVICE_ARCHITECTURE}"
+echo "VIDEO_CAPTURE_MODULE: ${VIDEO_CAPTURE_MODULE}"
 
 MANIFEST_TEMPLATE_BASE_NAME="deployment"
 MANIFEST_ENVIRONMENT_VARIABLES_FILENAME=".env"
 
-if [ "$DETECTOR_MODULE_RUNTIME" == "CPU" ]; then
-    MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_BASE_NAME}.cpu"
-elif [ "$DETECTOR_MODULE_RUNTIME" == "NVIDIA" ]; then
+
+if [ "$DETECTOR_MODULE_RUNTIME" == "NVIDIA" ]; then
     MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_BASE_NAME}.gpu"
 elif [ "$DETECTOR_MODULE_RUNTIME" == "MOVIDIUS" ]; then
     MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_BASE_NAME}.vpu"
+else
+    MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_BASE_NAME}.cpu"
 fi
 
-# Update the value of RUNTIME variable in environment variable file
-sed -i 's#^\(RUNTIME[ ]*=\).*#\1\"'"$MODULE_RUNTIME"'\"#g' "$MANIFEST_ENVIRONMENT_VARIABLES_FILENAME"
-
 if [ "$EDGE_DEVICE_ARCHITECTURE" == "ARM64" ]; then
-    MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_BASE_NAME}.arm64v8"
+    MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_NAME}.arm64v8"
 fi
 
 if [ "$VIDEO_CAPTURE_MODULE" == "opencv" ]; then
-    MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_BASE_NAME}.opencv"
+    MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_NAME}.opencv"
 fi
 
-MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_BASE_NAME}.json"
+MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_NAME}.template.json"
+
+echo "Deployment template choosen: ${MANIFEST_TEMPLATE_NAME}"
 
 # =========================================================
 # Generate Deployment Manifast
 # =========================================================
 echo "$(info) Generating manifest file from template file"
 # Generate manifest file
+# Different architechure as been split into different platform
 iotedgedev genconfig --file "$MANIFEST_TEMPLATE_NAME" --platform "$PLATFORM_ARCHITECTURE"
 
 echo "$(info) Generated manifest file"
