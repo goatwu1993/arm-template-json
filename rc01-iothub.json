@@ -4,7 +4,7 @@
   "parameters": {
     "projectName": {
       "type": "string",
-      "defaultValue": "contoso",
+      "defaultValue": "factoryai",
       "minLength": 1,
       "maxLength": 11,
       "metadata": {
@@ -20,13 +20,13 @@
     }
   },
   "variables": {
-    "iotHubName": "[concat(parameters('projectName'), 'Hub', uniqueString(resourceGroup().id))]",
+    "iotHubName": "[concat(parameters('projectName'), '-Hub', uniqueString(resourceGroup().id))]",
     "iotHubSkuName": "S1",
     "iotHubSkuUnit": "1",
     "iotHubD2cPartitions": "4",
     "storageAccountName": "[concat(toLower(parameters('projectName')), uniqueString(resourceGroup().id))]",
-    "storageEndpoint": "[concat(parameters('projectName'), 'StorageEndpont')]",
-    "storageContainerName": "[concat(toLower(parameters('projectName')), 'results')]"
+    "storageEndpoint": "[concat(parameters('projectName'), '-StorageEndpont')]",
+    "storageContainerName": "[concat(toLower(parameters('projectName')), '-results')]"
   },
   "resources": [
     {
