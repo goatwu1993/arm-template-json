@@ -20,7 +20,7 @@
     }
   },
   "variables": {
-    "iotHubName": "[concat(parameters('projectName'), '-Hub-', uniqueString(resourceGroup().id))]",
+    "iotHubName": "[concat(parameters('projectName'), '-hub-', uniqueString(resourceGroup().id))]",
     "iotHubSkuName": "S1",
     "iotHubSkuUnit": "1",
     "iotHubD2cPartitions": "4",
