@@ -1,12 +1,11 @@
 #!/bin/bash
 
 # This script generates a deployment manifest template and deploys it to an existing IoT Edge device
+. .env
 
 # =========================================================
 # Variables
 # =========================================================
-
-
 IOTEDGE_DEV_VERSION="2.1.0"
 
 
@@ -47,7 +46,7 @@ pip install --upgrade azure-cli-telemetry
 # Login Azure
 # =========================================================
 echo "Logging in with Managed Identity"
-az login --identity --output "none"
+# az login --identity --output "none"
 
 echo "Installing azure iot extension"
 az extension add --name azure-iot
@@ -58,11 +57,8 @@ echo "Installation complete"
 # =========================================================
 # IoT Hub Create IoTHub/Edge device if not exists
 # =========================================================
-# We're enabling exit on error after installation steps as there are some warnings and error thrown in installation steps which causes the script to fail
 set -e
 
-# Check for existence of IoT Hub and Edge device in Resource Group for IoT Hub,
-# and based on that either throw error or use the existing resources
 if [ -z "$(az iot hub list --query "[?name=='$IOTHUB_NAME'].name" --resource-group "$RESOURCE_GROUP" -o tsv)" ]; then
     echo "$(error) IoT Hub \"$IOTHUB_NAME\" does not exist."
     exit 1
@@ -87,20 +83,20 @@ MANIFAST_PATH="${REPO_OUTPUT_DIR}/manifast"
 ENV_TEMPLATE_PATH="${MANIFAST_PATH}/env-template"
 ENV_PATH="${MANIFAST_PATH}/.env"
 
+rm -rf ${REPO_OUTPUT_DIR}
+
 git clone "${MANIFAST_REPO}" --single-branch --branch "${MANIFAST_REPO_BRANCH}" ${REPO_OUTPUT_DIR}
 cp ${ENV_TEMPLATE_PATH} ${ENV_PATH}
 
+# =========================================================
+# Azure CLI
+# =========================================================
 IOTHUB_CONNECTION_STRING=$(az iot hub show-connection-string --name ${IOTHUB_NAME} | jq ".connectionString")
 CUSTOM_VISION_TRAINING_KEY=$(az cognitiveservices account keys list --name ${CUSTOMVISION_NAME} -g ${RESOURCE_GROUP} | jq ".key1")
 CUSTOM_VISION_ENDPOINT=$(az cognitiveservices account show --name ${CUSTOMVISION_NAME} -g ${RESOURCE_GROUP} | jq ".properties.endpoint")
 SUBSCRIPTION_ID=$(az account show | jq ".id")
 TENANT_ID=$(az account show | jq ".managedByTenants[0].tenantId")
 
-# App/sp not yet created. Create now
-az ams account sp create -a ${AMS_NAME} -g ${RESOURCE_GROUP} -n ${AMS_SP_NAME} -p ${AMS_SP_SECRET} --role Owner > /dev/null 2>&1
-
-AMS_SP_JSON=$(az ams account sp reset-credentials -a ${AMS_NAME} -g ${RESOURCE_GROUP} -n ${AMS_SP_NAME} -p ${AMS_SP_SECRET} --role Owner)
-echo $AMS_SP_JSON
 AMS_SP_SECRET=$(echo ${AMS_SP_JSON} | jq ".AadSecret")
 AMS_SP_ID=$(echo ${AMS_SP_JSON} | jq ".AadClientId")
 AMS_NAME="\"${AMS_NAME}\""
@@ -156,45 +152,21 @@ echo "Deployment template choosen: ${MANIFEST_TEMPLATE_NAME}"
 # Generate Deployment Manifast
 # =========================================================
 echo "$(info) Generating manifest file from template file"
-# Generate manifest file
-# Different architechure as been split into different platform
 cd ${MANIFAST_PATH}
-iotedgedev genconfig --file "$MANIFEST_TEMPLATE_NAME" --platform "$PLATFORM_ARCHITECTURE"
+rm -rf config
+iotedgedev genconfig --file "$MANIFEST_TEMPLATE_NAME"
 
 echo "$(info) Generated manifest file"
 
-#Construct file path of the manifest file by getting file name of template file and replace 'template.' with '' if it has .json extension
-#iotedgedev service used deployment.json filename if the provided file does not have .json extension
-#We are prefixing ./config to the filename as iotedgedev service creates a config folder and adds the manifest file in that folder
-
-# if .json then remove template. if present else deployment.json
-if [[ "$MANIFEST_TEMPLATE_NAME" == *".json"* ]]; then
-    # Check if the file name is like name.template.json, if it is construct new name as name.json
-    # Remove last part (.json) from file name
-    TEMPLATE_FILE_NAME="${MANIFEST_TEMPLATE_NAME%.*}"
-    # Get the last part form file name and check if it is template
-    IS_TEMPLATE="${TEMPLATE_FILE_NAME##*.}"
-    if [ "$IS_TEMPLATE" == "template" ]; then
-        # Get everything but the last part (.template) and append .json to construct new name
-        TEMPLATE_FILE_NAME="${TEMPLATE_FILE_NAME%.*}.json"
-        PRE_GENERATED_MANIFEST_FILENAME="./config/$(basename "$TEMPLATE_FILE_NAME")"
-    else
-        PRE_GENERATED_MANIFEST_FILENAME="./config/$(basename "$MANIFEST_TEMPLATE_NAME")"
-    fi
-else
-    PRE_GENERATED_MANIFEST_FILENAME="./config/deployment.json"
-fi
+# =========================================================
+# Get Deployment Manifest
+# =========================================================
+PRE_GENERATED_MANIFEST_FILENAME="./config/deployment.json"
+find ./config -name "*.json" | xargs -I{} mv {} "${PRE_GENERATED_MANIFEST_FILENAME}"
 
 if [ ! -f "$PRE_GENERATED_MANIFEST_FILENAME" ]; then
     echo "$(error) Manifest file \"$PRE_GENERATED_MANIFEST_FILENAME\" does not exist. Please check config folder under current directory: \"$PWD\" to see if manifest file is generated or not"
 fi
-
-
-# This step deploys the configured deployment manifest to the edge device. After completed,
-# the device will begin to pull edge modules and begin executing workloads (including sending
-# messages to the cloud for further processing, visualization, etc).
-# Check if a deployment with given name, already exists in IoT Hub. If it doesn't exist create a new one.
-# If it exists, append a random number to user given deployment name and create a deployment.
 
 # =========================================================
 # IoT Hub Deploy
