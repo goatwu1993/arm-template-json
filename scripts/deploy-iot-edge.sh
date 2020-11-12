@@ -45,8 +45,6 @@ pip install --upgrade azure-cli-telemetry
 # =========================================================
 # Login Azure
 # =========================================================
-echo "$(info) Logging in with Managed Identity"
-az login --identity --output "none"
 
 echo "$(info) Installing azure iot extension"
 az extension add --name azure-iot
