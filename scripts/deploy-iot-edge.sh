@@ -2,7 +2,7 @@
 
 # This script generates a deployment manifest template and deploys it to an existing IoT Edge device
 
-# . .env
+. .env
 # =========================================================
 # Variables
 # =========================================================
@@ -46,7 +46,7 @@ pip install --upgrade azure-cli-telemetry
 # Login Azure
 # =========================================================
 echo "Logging in with Managed Identity"
-az login --identity --output "none"
+# az login --identity --output "none"
 
 echo "Installing azure iot extension"
 az extension add --name azure-iot
@@ -103,6 +103,9 @@ AMS_NAME="\"${AMS_NAME}\""
 
 echo "Gening .env ${ENV_PATH}"
 
+sed -i -e "s|^CONTAINER_REGISTRY_NAME=.*$|CONTAINER_REGISTRY_NAME=${CONTAINER_REGISTRY_NAME}|g" ${ENV_PATH}
+sed -i -e "s|^CONTAINER_REGISTRY_USERNAME=.*$|CONTAINER_REGISTRY_USERNAME=${CONTAINER_REGISTRY_USERNAME}|g" ${ENV_PATH}
+sed -i -e "s|^CONTAINER_REGISTRY_PASSWORD=.*$|CONTAINER_REGISTRY_PASSWORD=${CONTAINER_REGISTRY_PASSWORD}|g" ${ENV_PATH}
 sed -i -e "s|^IOTHUB_CONNECTION_STRING=.*$|IOTHUB_CONNECTION_STRING=$IOTHUB_CONNECTION_STRING|g" ${ENV_PATH}
 sed -i -e "s/^SUBSCRIPTION_ID=.*$/SUBSCRIPTION_ID=${SUBSCRIPTION_ID}/g" ${ENV_PATH}
 sed -i -e "s/^RESOURCE_GROUP=.*$/RESOURCE_GROUP=\"${RESOURCE_GROUP}\"/g" ${ENV_PATH}
