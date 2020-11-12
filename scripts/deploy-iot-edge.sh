@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # This script generates a deployment manifest template and deploys it to an existing IoT Edge device
-. .env
 
 # =========================================================
 # Variables
@@ -46,7 +45,7 @@ pip install --upgrade azure-cli-telemetry
 # Login Azure
 # =========================================================
 echo "Logging in with Managed Identity"
-# az login --identity --output "none"
+az login --identity --output "none"
 
 echo "Installing azure iot extension"
 az extension add --name azure-iot
