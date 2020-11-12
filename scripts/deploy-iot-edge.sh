@@ -2,12 +2,10 @@
 
 # This script generates a deployment manifest template and deploys it to an existing IoT Edge device
 
-# . .env
 # =========================================================
 # Variables
 # =========================================================
-IOTEDGE_DEV_VERSION="2.1.0"
-
+IOTEDGE_DEV_VERSION="2.1.4"
 
 # =========================================================
 # Define helper function for logging
@@ -36,7 +34,7 @@ apt-get update && apt-get install -y git jq coreutils
 
 echo "$(info) Installing packages"
 echo "$(info) Installing iotedgedev"
-pip install iotedgedev=="${IOTEDGE_DEV_VERSION}"
+pip install --upgrade iotedgedev==${IOTEDGE_DEV_VERSION}
 
 echo "$(info) Updating az-cli"
 pip install --upgrade azure-cli
@@ -57,19 +55,19 @@ echo "$(info) Installation complete"
 # =========================================================
 set -e
 
-if [ -z "$(az iot hub list --query "[?name=='$IOTHUB_NAME'].name" --resource-group "$RESOURCE_GROUP" -o tsv)" ]; then
-    echo "$(error) IoT Hub \"$IOTHUB_NAME\" does not exist."
-    exit 1
-else
-    echo "$(info) Using existing IoT Hub \"$IOTHUB_NAME\""
-fi
-
-if [ -z "$(az iot hub device-identity list --hub-name "$IOTHUB_NAME" --resource-group "$RESOURCE_GROUP" --query "[?deviceId=='$DEVICE_NAME'].deviceId" -o tsv)" ]; then
-    echo "$(error) Device \"$DEVICE_NAME\" does not exist in IoT Hub \"$IOTHUB_NAME\""
-    exit 1
-else
-    echo "$(info) Using existing Edge Device \"$IOTHUB_NAME\""
-fi
+# if [ -z "$(az iot hub list --query "[?name=='$IOTHUB_NAME'].name" --resource-group "$RESOURCE_GROUP" -o tsv)" ]; then
+    # echo "$(error) IoT Hub \"$IOTHUB_NAME\" does not exist."
+    # exit 1
+# else
+    # echo "$(info) Using existing IoT Hub \"$IOTHUB_NAME\""
+# fi
+#
+# if [ -z "$(az iot hub device-identity list --hub-name "$IOTHUB_NAME" --resource-group "$RESOURCE_GROUP" --query "[?deviceId=='$DEVICE_NAME'].deviceId" -o tsv)" ]; then
+    # echo "$(error) Device \"$DEVICE_NAME\" does not exist in IoT Hub \"$IOTHUB_NAME\""
+    # exit 1
+# else
+    # echo "$(info) Using existing Edge Device \"$IOTHUB_NAME\""
+# fi
 
 # =========================================================
 # ENV template replacement
@@ -77,13 +75,16 @@ fi
 MANIFEST_REPO="https://github.com/goatwu1993/arm-template-json.git"
 MANIFEST_REPO_BRANCH="main"
 REPO_OUTPUT_DIR="manifest-iot-hub"
-MANIFEST_PATH="${REPO_OUTPUT_DIR}/manifest"
+MANIFEST_PATH="${REPO_OUTPUT_DIR}"
 ENV_TEMPLATE_PATH="${MANIFEST_PATH}/env-template"
 ENV_PATH="${MANIFEST_PATH}/.env"
 
 rm -rf ${REPO_OUTPUT_DIR}
+rm -f archive.zip
 
-git clone "${MANIFEST_REPO}" --single-branch --branch "${MANIFEST_REPO_BRANCH}" ${REPO_OUTPUT_DIR}
+wget "https://github.com/linkernetworks/azure-intelligent-edge-patterns/raw/feat/arm-deploy/factory-ai-vision/DockerHubVersion/archive.zip"
+unzip archive.zip -d ${REPO_OUTPUT_DIR}
+rm -f archive.zip
 cp ${ENV_TEMPLATE_PATH} ${ENV_PATH}
 
 # =========================================================
@@ -95,11 +96,16 @@ CUSTOM_VISION_ENDPOINT=$(az cognitiveservices account show --name ${CUSTOMVISION
 SUBSCRIPTION_ID=$(az account show | jq ".id")
 TENANT_ID=$(az account show | jq ".managedByTenants[0].tenantId")
 
+echo ${IOTHUB_CONNECTION_STRING}
+
+
 AMS_SP_SECRET=$(echo ${AMS_SP_JSON} | jq ".AadSecret")
 AMS_SP_ID=$(echo ${AMS_SP_JSON} | jq ".AadClientId")
 AMS_NAME="\"${AMS_NAME}\""
 
 echo "$(info) Gening .env ${ENV_PATH}"
+
+echo "$(pwd)"
 
 sed -i -e "s|^CONTAINER_REGISTRY_NAME=.*$|CONTAINER_REGISTRY_NAME=${CONTAINER_REGISTRY_NAME}|g" ${ENV_PATH}
 sed -i -e "s|^CONTAINER_REGISTRY_USERNAME=.*$|CONTAINER_REGISTRY_USERNAME=${CONTAINER_REGISTRY_USERNAME}|g" ${ENV_PATH}
@@ -155,7 +161,7 @@ echo "$(info) Deployment template choosen: ${MANIFEST_TEMPLATE_NAME}"
 echo "$(info) Generating manifest file from template file"
 cd ${MANIFEST_PATH}
 rm -rf config
-iotedgedev genconfig --file "$MANIFEST_TEMPLATE_NAME"
+iotedgedev genconfig --file "${MANIFEST_TEMPLATE_NAME}"
 
 echo "$(info) Generated manifest file"
 
@@ -165,13 +171,13 @@ echo "$(info) Generated manifest file"
 PRE_GENERATED_MANIFEST_FILENAME="./config/deployment.json"
 find ./config -name "*.json" | xargs -I{} mv {} "${PRE_GENERATED_MANIFEST_FILENAME}"
 
-if [ ! -f "$PRE_GENERATED_MANIFEST_FILENAME" ]; then
-    echo "$(error) Manifest file \"$PRE_GENERATED_MANIFEST_FILENAME\" does not exist. Please check config folder under current directory: \"$PWD\" to see if manifest file is generated or not"
+if [ ! -f "${PRE_GENERATED_MANIFEST_FILENAME}" ]; then
+    echo "$(error) Manifest file \"${PRE_GENERATED_MANIFEST_FILENAME}\" does not exist. Please check config folder under current directory: \"$PWD\" to see if manifest file is generated or not"
 fi
 
 # =========================================================
 # IoT Hub Deploy
 # =========================================================
-az iot edge deployment create --deployment-id "$DEPLOYMENT_NAME" --hub-name "$IOTHUB_NAME" --content "$PRE_GENERATED_MANIFEST_FILENAME" --target-condition "deviceId='$DEVICE_NAME'" --output "none"
+az iot edge deployment create --deployment-id "${DEPLOYMENT_NAME}" --hub-name "${IOTHUB_NAME}" --content "${PRE_GENERATED_MANIFEST_FILENAME}" --target-condition "deviceId='${DEVICE_NAME}'" --output "none"
 
 echo "$(info) Deployed manifest file to IoT Hub. Your modules are being deployed to your device now. This may take some time."
