@@ -2,6 +2,7 @@
 
 # This script generates a deployment manifest template and deploys it to an existing IoT Edge device
 
+# . .env
 # =========================================================
 # Variables
 # =========================================================
@@ -75,16 +76,16 @@ fi
 # =========================================================
 # ENV template replacement
 # =========================================================
-MANIFAST_REPO="https://github.com/goatwu1993/arm-template-json.git"
-MANIFAST_REPO_BRANCH="main"
-REPO_OUTPUT_DIR="manifast-iot-hub"
-MANIFAST_PATH="${REPO_OUTPUT_DIR}/manifast"
-ENV_TEMPLATE_PATH="${MANIFAST_PATH}/env-template"
-ENV_PATH="${MANIFAST_PATH}/.env"
+MANIFEST_REPO="https://github.com/goatwu1993/arm-template-json.git"
+MANIFEST_REPO_BRANCH="main"
+REPO_OUTPUT_DIR="manifest-iot-hub"
+MANIFEST_PATH="${REPO_OUTPUT_DIR}/manifest"
+ENV_TEMPLATE_PATH="${MANIFEST_PATH}/env-template"
+ENV_PATH="${MANIFEST_PATH}/.env"
 
 rm -rf ${REPO_OUTPUT_DIR}
 
-git clone "${MANIFAST_REPO}" --single-branch --branch "${MANIFAST_REPO_BRANCH}" ${REPO_OUTPUT_DIR}
+git clone "${MANIFEST_REPO}" --single-branch --branch "${MANIFEST_REPO_BRANCH}" ${REPO_OUTPUT_DIR}
 cp ${ENV_TEMPLATE_PATH} ${ENV_PATH}
 
 # =========================================================
@@ -151,7 +152,7 @@ echo "Deployment template choosen: ${MANIFEST_TEMPLATE_NAME}"
 # Generate Deployment Manifast
 # =========================================================
 echo "$(info) Generating manifest file from template file"
-cd ${MANIFAST_PATH}
+cd ${MANIFEST_PATH}
 rm -rf config
 iotedgedev genconfig --file "$MANIFEST_TEMPLATE_NAME"
 
