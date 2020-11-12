@@ -2,7 +2,7 @@
 
 # This script generates a deployment manifest template and deploys it to an existing IoT Edge device
 
-. .env
+# . .env
 # =========================================================
 # Variables
 # =========================================================
@@ -34,25 +34,25 @@ exitWithError() {
 apt-get update && apt-get install -y git jq coreutils
 
 
-echo "Installing packages"
-echo "Installing iotedgedev"
+echo "$(info) Installing packages"
+echo "$(info) Installing iotedgedev"
 pip install iotedgedev=="${IOTEDGE_DEV_VERSION}"
 
-echo "Updating az-cli"
+echo "$(info) Updating az-cli"
 pip install --upgrade azure-cli
 pip install --upgrade azure-cli-telemetry
 
 # =========================================================
 # Login Azure
 # =========================================================
-echo "Logging in with Managed Identity"
-# az login --identity --output "none"
+echo "$(info) Logging in with Managed Identity"
+az login --identity --output "none"
 
-echo "Installing azure iot extension"
+echo "$(info) Installing azure iot extension"
 az extension add --name azure-iot
 
 pip3 install --upgrade jsonschema
-echo "Installation complete"
+echo "$(info) Installation complete"
 
 # =========================================================
 # IoT Hub Create IoTHub/Edge device if not exists
@@ -101,7 +101,7 @@ AMS_SP_SECRET=$(echo ${AMS_SP_JSON} | jq ".AadSecret")
 AMS_SP_ID=$(echo ${AMS_SP_JSON} | jq ".AadClientId")
 AMS_NAME="\"${AMS_NAME}\""
 
-echo "Gening .env ${ENV_PATH}"
+echo "$(info) Gening .env ${ENV_PATH}"
 
 sed -i -e "s|^CONTAINER_REGISTRY_NAME=.*$|CONTAINER_REGISTRY_NAME=${CONTAINER_REGISTRY_NAME}|g" ${ENV_PATH}
 sed -i -e "s|^CONTAINER_REGISTRY_USERNAME=.*$|CONTAINER_REGISTRY_USERNAME=${CONTAINER_REGISTRY_USERNAME}|g" ${ENV_PATH}
@@ -120,12 +120,12 @@ sed -i -e "s/^CUSTOM_VISION_TRAINING_KEY.*$/CUSTOM_VISION_TRAINING_KEY=${CUSTOM_
 # Choosing IoTHub Deployment template
 # =========================================================
 printf "\n%60s\n" " " | tr ' ' '-'
-echo "Configuring IoT Hub"
+echo "$(info) Configuring IoT Hub"
 printf "%60s\n" " " | tr ' ' '-'
 
-echo "INFERENCE_MODULE_RUNTIME: ${INFERENCE_MODULE_RUNTIME}"
-echo "EDGE_DEVICE_ARCHITECTURE: ${EDGE_DEVICE_ARCHITECTURE}"
-echo "VIDEO_CAPTURE_MODULE: ${VIDEO_CAPTURE_MODULE}"
+echo "$(info) INFERENCE_MODULE_RUNTIME: ${INFERENCE_MODULE_RUNTIME}"
+echo "$(info) EDGE_DEVICE_ARCHITECTURE: ${EDGE_DEVICE_ARCHITECTURE}"
+echo "$(info) VIDEO_CAPTURE_MODULE: ${VIDEO_CAPTURE_MODULE}"
 
 MANIFEST_TEMPLATE_BASE_NAME="deployment"
 MANIFEST_ENVIRONMENT_VARIABLES_FILENAME=".env"
@@ -149,7 +149,7 @@ fi
 
 MANIFEST_TEMPLATE_NAME="${MANIFEST_TEMPLATE_NAME}.template.json"
 
-echo "Deployment template choosen: ${MANIFEST_TEMPLATE_NAME}"
+echo "$(info) Deployment template choosen: ${MANIFEST_TEMPLATE_NAME}"
 
 # =========================================================
 # Generate Deployment Manifast

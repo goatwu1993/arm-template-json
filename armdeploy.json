@@ -16,6 +16,27 @@
         "description": "Specify the architecture of the Edge Device. Currently supported values are 'X86' and 'ARM64'."
       }
     },
+    "containerRegistryName": {
+      "type": "string",
+      "defaultValue": "factoryairegistry.azurecr.io",
+      "metadata": {
+        "description": "Container Registry Name."
+      }
+    },
+    "containerRegistryUserName": {
+      "type": "string",
+      "defaultValue": "factoryairegistry",
+      "metadata": {
+        "description": "Container Registry Username."
+      }
+    },
+    "containerRegistryPassword": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Container Registry Password."
+      }
+    },
     "moduleRuntime": {
       "defaultValue": "CPU",
       "allowedValues": ["CPU", "NVIDIA", "MOVIDIUS"],
@@ -191,6 +212,15 @@
           "moduleRuntime": {
             "value": "[parameters('moduleRuntime')]"
           },
+          "containerRegistryName": {
+            "value": "[parameters('containerRegistryName')]"
+          },
+          "containerRegistryUserName": {
+            "value": "[parameters('containerRegistryUserName')]"
+          },
+          "containerRegistryPassword": {
+            "value": "[parameters('containerRegistryPassword')]"
+          },
           "managedIdentityResourceGroup": {
             "value": "[variables('managedIdentityResourceGroup')]"
           },
@@ -238,6 +268,15 @@
             "moduleRuntime": {
               "type": "String"
             },
+            "containerRegistryName": {
+              "type": "string"
+            },
+            "containerRegistryUserName": {
+              "type": "string"
+            },
+            "containerRegistryPassword": {
+              "type": "string"
+            },
             "managedIdentityResourceGroup": {
               "type": "String"
             },
@@ -279,6 +318,18 @@
                 "primaryScriptUri": "https://raw.githubusercontent.com/goatwu1993/arm-template-json/main/scripts/deploy-iot-edge.sh",
                 "supportingScriptUris": [],
                 "environmentVariables": [
+                  {
+                    "name": "CONTAINER_REGISTRY_NAME",
+                    "value": "[parameters('containerRegistryName')]"
+                  },
+                  {
+                    "name": "CONTAINER_REGISTRY_USERNAME",
+                    "value": "[parameters('containerRegistryUserName')]"
+                  },
+                  {
+                    "name": "CONTAINER_REGISTRY_PASSWORD",
+                    "value": "[parameters('containerRegistryPassword')]"
+                  },
                   {
                     "name": "INFERENCE_MODULE_RUNTIME",
                     "value": "[parameters('moduleRuntime')]"
