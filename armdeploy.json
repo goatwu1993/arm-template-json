@@ -17,8 +17,8 @@
       }
     },
     "moduleRuntime": {
-      "defaultValue": "CPU",
-      "allowedValues": ["CPU", "NVIDIA", "MOVIDIUS"],
+      "defaultValue": "cpu",
+      "allowedValues": ["cpu", "gpu (NVIDIA)", "vpu (Movidius)"],
       "type": "string",
       "metadata": {
         "description": "Select value for runtime for Detector module on Edge Device. Set it to 'CPU' to use CPU to run detector module. If the Edge Device has Nvidia GPU, set it to 'NVIDIA' to use GPU to run detector module or to use movidius set it to 'MOVIDIUS'."
