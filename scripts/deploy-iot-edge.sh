@@ -43,7 +43,11 @@ pip install --upgrade azure-cli-telemetry
 # =========================================================
 # Login Azure
 # =========================================================
+# Pass since ARM already logged-in with identity.
 
+# =========================================================
+# Install Azure CLI extension
+# =========================================================
 echo "$(info) Installing azure iot extension"
 az extension add --name azure-iot
 
@@ -55,25 +59,23 @@ echo "$(info) Installation complete"
 # =========================================================
 set -e
 
-# if [ -z "$(az iot hub list --query "[?name=='$IOTHUB_NAME'].name" --resource-group "$RESOURCE_GROUP" -o tsv)" ]; then
-    # echo "$(error) IoT Hub \"$IOTHUB_NAME\" does not exist."
-    # exit 1
-# else
-    # echo "$(info) Using existing IoT Hub \"$IOTHUB_NAME\""
-# fi
-#
-# if [ -z "$(az iot hub device-identity list --hub-name "$IOTHUB_NAME" --resource-group "$RESOURCE_GROUP" --query "[?deviceId=='$DEVICE_NAME'].deviceId" -o tsv)" ]; then
-    # echo "$(error) Device \"$DEVICE_NAME\" does not exist in IoT Hub \"$IOTHUB_NAME\""
-    # exit 1
-# else
-    # echo "$(info) Using existing Edge Device \"$IOTHUB_NAME\""
-# fi
+if [ -z "$(az iot hub list --query "[?name=='$IOTHUB_NAME'].name" --resource-group "$RESOURCE_GROUP" -o tsv)" ]; then
+    echo "$(error) IoT Hub \"$IOTHUB_NAME\" does not exist."
+    exit 1
+else
+    echo "$(info) Using existing IoT Hub \"$IOTHUB_NAME\""
+fi
+
+if [ -z "$(az iot hub device-identity list --hub-name "$IOTHUB_NAME" --resource-group "$RESOURCE_GROUP" --query "[?deviceId=='$DEVICE_NAME'].deviceId" -o tsv)" ]; then
+    echo "$(error) Device \"$DEVICE_NAME\" does not exist in IoT Hub \"$IOTHUB_NAME\""
+    exit 1
+else
+    echo "$(info) Using existing Edge Device \"$IOTHUB_NAME\""
+fi
 
 # =========================================================
 # ENV template replacement
 # =========================================================
-MANIFEST_REPO="https://github.com/goatwu1993/arm-template-json.git"
-MANIFEST_REPO_BRANCH="main"
 REPO_OUTPUT_DIR="manifest-iot-hub"
 MANIFEST_PATH="${REPO_OUTPUT_DIR}"
 ENV_TEMPLATE_PATH="${MANIFEST_PATH}/env-template"
@@ -82,7 +84,7 @@ ENV_PATH="${MANIFEST_PATH}/.env"
 rm -rf ${REPO_OUTPUT_DIR}
 rm -f archive.zip
 
-wget "https://github.com/linkernetworks/azure-intelligent-edge-patterns/raw/feat/arm-deploy/factory-ai-vision/DockerHubVersion/archive.zip"
+wget "https://github.com/linkernetworks/azure-intelligent-edge-patterns/raw/develop/factory-ai-vision/EdgeSolution/archive.zip"
 unzip archive.zip -d ${REPO_OUTPUT_DIR}
 rm -f archive.zip
 cp ${ENV_TEMPLATE_PATH} ${ENV_PATH}
@@ -96,8 +98,6 @@ CUSTOM_VISION_ENDPOINT=$(az cognitiveservices account show --name ${CUSTOMVISION
 SUBSCRIPTION_ID=$(az account show | jq ".id")
 TENANT_ID=$(az account show | jq ".managedByTenants[0].tenantId")
 
-echo ${IOTHUB_CONNECTION_STRING}
-
 
 AMS_SP_SECRET=$(echo ${AMS_SP_JSON} | jq ".AadSecret")
 AMS_SP_ID=$(echo ${AMS_SP_JSON} | jq ".AadClientId")
@@ -105,7 +105,6 @@ AMS_NAME="\"${AMS_NAME}\""
 
 echo "$(info) Gening .env ${ENV_PATH}"
 
-echo "$(pwd)"
 
 sed -i -e "s|^CONTAINER_REGISTRY_NAME=.*$|CONTAINER_REGISTRY_NAME=${CONTAINER_REGISTRY_NAME}|g" ${ENV_PATH}
 sed -i -e "s|^CONTAINER_REGISTRY_USERNAME=.*$|CONTAINER_REGISTRY_USERNAME=${CONTAINER_REGISTRY_USERNAME}|g" ${ENV_PATH}
